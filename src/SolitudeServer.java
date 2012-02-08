@@ -14,24 +14,24 @@ import java.util.Vector;
 
 public class SolitudeServer extends PApplet {
 	
-	private class Shape{
-		float x, y, thick;
+	private class Node{
+		float x,y,thick;
 	}
-	/*
-	private class Player{
-		Vector<Shape> shapes;
-	}*/
+	private class Shape{
+		Vector<Node> nodes = new Vector<Node>();
+	}
 
 	static final int NUM_PLAYERS = 8;
 	static final int CONTROLP5_WIDTH = 100;
 	final int CANVAS_WIDTH = screen.width - CONTROLP5_WIDTH;
 	final int CANVAS_HEIGHT = 480;
-	static String HOST_IN = "127.0.0.1";
-	static int PORT_IN = 12000;
-	static String HOST_OUT = "127.0.0.127";
-	static int PORT_OUT = 12021;
+//	static String HOST_IN = "127.0.0.1";
+	static int LISTEN_PORT = 12000;
+	static String HOST = "127.0.0.1";
+	static int PORT = 1234;
 	
-	ControlP5 controlP5;
+	
+	ControlP5 gui;
 	Textfield tfIpIn, tfPortIn;
 	Textfield tfIpOut, tfPortOut;
 	
@@ -39,8 +39,21 @@ public class SolitudeServer extends PApplet {
 	NetAddress remoteLocationIn, remoteLocationOut;
 	
 	Vector<Shape> shapes = new Vector<Shape>(NUM_PLAYERS);
+	int r = 228;
+	int g = 228;
+	int b = 228;
+	int a = 128;
+	int p1color = color(r,0,0);
+	int p2color = color(r,g,0);
+	int p3color = color(r,0,b);
+	int p4color = color(0,g,0);
+	int p5color = color(r,g,b);
+	int p6color = color(0,0,b);
+	int p7color = color(r,a,0);
+	int p8color = color(0,a,b);
+	int playerColors[] = {p1color, p2color, p3color, p4color, p5color, p6color, p7color, p8color};
 	
-	boolean bTest = false;
+//	boolean bTest = false;
 	
 	static int scannerX = 0;
 	boolean bPlay = false;
@@ -50,9 +63,14 @@ public class SolitudeServer extends PApplet {
 		size(CANVAS_WIDTH+CONTROLP5_WIDTH,CANVAS_HEIGHT);
 		smooth();
 		
-		osc = new OscP5(this,PORT_IN);
-		remoteLocationIn = new NetAddress(HOST_IN,PORT_IN);
-		remoteLocationOut = new NetAddress(HOST_OUT,PORT_OUT);
+		osc = new OscP5(this,LISTEN_PORT);
+//		remoteLocationIn = new NetAddress(HOST_IN,PORT_IN);
+		remoteLocationOut = new NetAddress(HOST,PORT);
+
+		for (int i = 0; i < NUM_PLAYERS; i++) {
+			shapes.add(new Shape());
+		}
+		
 		
 		setGUI();
 	}
@@ -66,11 +84,14 @@ public class SolitudeServer extends PApplet {
 		line(CANVAS_WIDTH/2, 0, CANVAS_WIDTH/2, CANVAS_HEIGHT);
 		line(CANVAS_WIDTH, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 		
-		if(bTest){
-			background(128);
-			bTest = false;
-		}
-				
+//		if(bTest){
+//			background(128);
+//			bTest = false;
+//		}
+		
+		drawShapes();
+		
+		// Scanner head - CAP‚AL		
 		if(bPlay){
 			scannerX++;
 		}
@@ -79,34 +100,83 @@ public class SolitudeServer extends PApplet {
 		line(scannerX, 0, scannerX, height);
 	}
 	
+	public void drawShapes(){
+		for (int i = 0; i < shapes.size(); i++) {
+			fill(playerColors[i]);
+			beginShape();
+			Shape shape = shapes.elementAt(i);
+			for (int j = 0; j < shape.nodes.size(); j++) {
+				Node node = shape.nodes.elementAt(j);
+				float x = node.x * CANVAS_WIDTH;
+				float y = node.y * CANVAS_HEIGHT - (node.thick/2) * CANVAS_HEIGHT;
+				vertex(x, y);
+			}
+			for (int j = shape.nodes.size()-1; j >= 0; j--) {
+				Node node = shape.nodes.elementAt(j);
+				float x = node.x * CANVAS_WIDTH;
+				float y = node.y * CANVAS_HEIGHT + (node.thick/2) * CANVAS_HEIGHT;
+				vertex(x, y);
+			}
+			endShape();
+		}
+	}
+
+	
 	/***
 	 * FOR OSC TESTING.  REMOVE WHEN DONE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	 */
-	public void sendOsc(){
+	public void keyPressed(){
+		switch (key) {
+		case ' ':
+			println(shapes.size());
+			println(shapes.elementAt(0).nodes.size());
+			break;
+		case 's':
+			sendTestOsc();
+		default:
+			break;
+		}
+	}
+	public void sendTestOsc(){
 		OscMessage myMessage = new OscMessage("/test");
 		myMessage.add(1); // player
-		myMessage.add((float)0.5); // x1
-		myMessage.add((float)0.3); // y1
-		myMessage.add((float)0.2); // thickness 1
+		myMessage.add(random(0,1)); // x1
+		myMessage.add(random((float)0,(float)0.5)); // y1
+		myMessage.add(random((float)0,(float)0.5)); // thickness 1
+		myMessage.add(random(0,1)); // x1
+		myMessage.add(random((float)0,(float)0.5)); // y1
+		myMessage.add(random((float)0,(float)0.5)); // thickness 1
 		
-		osc.send(myMessage, remoteLocationIn);
+		osc.send(myMessage, remoteLocationOut);
+		
+		println("sendig osc through port: "+PORT);
 	}
 	/***
 	 * END TESTING
 	 */
 	
 	public void oscEvent(OscMessage theOscMessage){
-		print("### received an osc message.");
-		  print(" addrpattern: "+theOscMessage.addrPattern());
-		  println(" typetag: "+theOscMessage.typetag());
+		print("------------------------------\nSOLITUDE SERVER\n\n### received an osc message.");
+		print(" addrpattern: "+theOscMessage.addrPattern());
+		println(" typetag: "+theOscMessage.typetag());
+
+//		println("typetag length: "+theOscMessage.typetag().length());
+		int num_args = theOscMessage.typetag().length();
+		int playerID = theOscMessage.get(0).intValue();
+//		println("player ID: "+playerID);
+		Shape shape = new Shape();
+		shape.nodes.clear();
+		for (int i = 1; i < num_args; i += 3) {
+			Node node = new Node();
+			node.x = theOscMessage.get(i).floatValue();
+			node.y = theOscMessage.get(i+1).floatValue();
+			node.thick = theOscMessage.get(i+2).floatValue();
+			shape.nodes.add(node);
+		}
+		shapes.setElementAt(shape, playerID-1);
 		  
-//		  theOscMessage.print();
-		  println("player: "+theOscMessage.get(0).intValue());
-		  println("x: "+theOscMessage.get(1).floatValue());
-		  println("y: "+theOscMessage.get(2).floatValue());
-		  println("th: "+theOscMessage.get(3).floatValue());
-		  
-		  bTest = true;
+		println("---------------------------------");
+//		  bTest = true;
 	}
 	
 	public void controlEvent(ControlEvent theEvent){
@@ -116,64 +186,64 @@ public class SolitudeServer extends PApplet {
 		boolean in = false;
 		boolean out = false;
 		
-		if(name == "ip in"){ 
-			HOST_IN = tfIpIn.getText();
-			in = true;
-		}
+//		if(name == "ip in"){ 
+//			HOST_IN = tfIpIn.getText();
+//			in = true;
+//		}
 		if(name == "port in") {
-			PORT_IN = Integer.parseInt(tfPortIn.getText());
+			LISTEN_PORT = Integer.parseInt(tfPortIn.getText());
 			in = true;
 		}
 		if(name == "ip out") {
-			HOST_OUT = tfIpOut.getText();
+			HOST = tfIpOut.getText();
 			out = true;
 		}
 		if(name == "port out") {
-			PORT_IN = Integer.parseInt(tfPortOut.getText());
+			PORT = Integer.parseInt(tfPortOut.getText());
 			out = true;
 		}
 
-		if(in) remoteLocationIn = new NetAddress(HOST_IN, PORT_IN);
-		if(out)remoteLocationOut = new NetAddress(HOST_OUT, PORT_OUT);
+		if(in) osc = new OscP5(this, LISTEN_PORT);
+		if(out)remoteLocationOut = new NetAddress(HOST, PORT);
 		
 		if(name == "play") bPlay = !bPlay;
-
 	}
 
 	public void setGUI(){
-		controlP5 = new ControlP5(this);
+		gui = new ControlP5(this);
 		int buttonW = CONTROLP5_WIDTH-5;
 		int buttonH = 20;
 		int offset = 2;
 
 		// In IP and PORT
-		tfIpIn = controlP5.addTextfield("ip in", width - buttonW, 10, buttonW-10, buttonH);
-		tfIpIn.setText(HOST_IN);
-		tfIpIn.setAutoClear(false);
-		tfIpIn.setColorLabel(color(0));
-		tfIpIn.setColorBackground(color(228));
-		tfIpIn.setColorValueLabel(color(128));
-		tfIpIn.captionLabel().style().marginTop = -32;
+//		tfIpIn = controlP5.addTextfield("ip in", width - buttonW, 10, buttonW-10, buttonH);
+//		tfIpIn.setText(HOST_IN);
+//		tfIpIn.setAutoClear(false);
+//		tfIpIn.setColorLabel(color(0));
+//		tfIpIn.setColorBackground(color(228));
+//		tfIpIn.setColorValueLabel(color(128));
+//		tfIpIn.captionLabel().style().marginTop = -32;
 		
-		tfPortIn = controlP5.addTextfield("port in", width - buttonW, buttonH+offset+20, buttonW-10, buttonH);
-		tfPortIn.setText(Integer.toString(PORT_IN));
+		tfPortIn = gui.addTextfield("port in", width - buttonW, buttonH+offset+20, buttonW-10, buttonH);
+		tfPortIn.setText(Integer.toString(LISTEN_PORT));
 		tfPortIn.setAutoClear(false);
 		tfPortIn.setColorLabel(color(0));
 		tfPortIn.setColorBackground(color(228));
 		tfPortIn.setColorValueLabel(color(128));
 		tfPortIn.captionLabel().style().marginTop = -32;
+		tfPortIn.captionLabel().set("Listening to port #");
 
 		// Out IP and PORT
-		tfIpOut = controlP5.addTextfield("ip out", width - buttonW, (buttonH+offset)*4+10, buttonW-10, buttonH);
-		tfIpOut.setText(HOST_OUT);
+		tfIpOut = gui.addTextfield("ip out", width - buttonW, (buttonH+offset)*4+10, buttonW-10, buttonH);
+		tfIpOut.setText(HOST);
 		tfIpOut.setAutoClear(false);
 		tfIpOut.setColorLabel(color(0));
 		tfIpOut.setColorBackground(color(228));
 		tfIpOut.setColorValueLabel(color(128));
 		tfIpOut.captionLabel().style().marginTop = -32;
 		
-		tfPortOut = controlP5.addTextfield("port out", width - buttonW, (buttonH+offset)*5+20, buttonW-10, buttonH);
-		tfPortOut.setText(Integer.toString(PORT_OUT));
+		tfPortOut = gui.addTextfield("port out", width - buttonW, (buttonH+offset)*5+20, buttonW-10, buttonH);
+		tfPortOut.setText(Integer.toString(PORT));
 		tfPortOut.setAutoClear(false);
 		tfPortOut.setColorLabel(color(0));
 		tfPortOut.setColorBackground(color(228));
@@ -181,7 +251,7 @@ public class SolitudeServer extends PApplet {
 		tfPortOut.captionLabel().style().marginTop = -32;
 		
 		// Play button
-		Toggle t = controlP5.addToggle("play", width - buttonW, (buttonH+offset)*7+10, buttonW, buttonH);
+		Toggle t = gui.addToggle("play", width - buttonW, (buttonH+offset)*7+10, buttonW, buttonH);
 		t.setColorActive(color(0,128,0));
 		t.setColorBackground(color(128,0,0));
 		t.captionLabel().set("PLAY / STOP");
