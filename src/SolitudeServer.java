@@ -12,21 +12,30 @@ import oscP5.*;
 import netP5.*;
 import java.util.Vector;
 
+/**
+ * @author roger
+ *
+ */
 public class SolitudeServer extends PApplet {
 	
+	// A class for storing node information
 	private class Node{
 		float x,y,thick;
 	}
+	// A class for storing shape information (collection of nodes)
 	private class Shape{
 		Vector<Node> nodes = new Vector<Node>();
 	}
+	// -- TODO -- 
+	//	need to add a Player class to store a collection of shapes
 
 	static final int NUM_PLAYERS = 8;
 	static final int CONTROLP5_WIDTH = 100;
 	final int CANVAS_WIDTH = screen.width - CONTROLP5_WIDTH;
 	final int CANVAS_HEIGHT = 480;
-//	static String HOST_IN = "127.0.0.1";
-	static int LISTEN_PORT = 12000;
+
+	static int LISTEN_PORT = 12000; // listen for OSC messages to this port
+	// send OSC messages to this address
 	static String HOST = "127.0.0.1";
 	static int PORT = 1234;
 	
@@ -38,11 +47,13 @@ public class SolitudeServer extends PApplet {
 	OscP5 osc;
 	NetAddress remoteLocationIn, remoteLocationOut;
 	
-	Vector<Shape> shapes = new Vector<Shape>(NUM_PLAYERS);
+	Vector<Shape> shapes = new Vector<Shape>(NUM_PLAYERS); // a collection of shapes... should be players
+	// color info for painting shapes
 	int r = 228;
 	int g = 228;
 	int b = 228;
 	int a = 128;
+	// one color per player
 	int p1color = color(r,0,0);
 	int p2color = color(r,g,0);
 	int p3color = color(r,0,b);
@@ -51,72 +62,89 @@ public class SolitudeServer extends PApplet {
 	int p6color = color(0,0,b);
 	int p7color = color(r,a,0);
 	int p8color = color(0,a,b);
+	// player color array for easy accessibility
 	int playerColors[] = {p1color, p2color, p3color, p4color, p5color, p6color, p7color, p8color};
 	
 //	boolean bTest = false;
 	
-	static int scannerX = 0;
-	boolean bPlay = false;
+	static int scannerX = 0;	// the scanner head
+	boolean bPlay = false;		// check if is playing to move the scanner head and send OSC messages if needed
 	
 
 	public void setup() {
 		size(CANVAS_WIDTH+CONTROLP5_WIDTH,CANVAS_HEIGHT);
 		smooth();
 		
-		osc = new OscP5(this,LISTEN_PORT);
-//		remoteLocationIn = new NetAddress(HOST_IN,PORT_IN);
-		remoteLocationOut = new NetAddress(HOST,PORT);
+		osc = new OscP5(this,LISTEN_PORT); // listen for OSC messages to this port
+		remoteLocationOut = new NetAddress(HOST,PORT); // send OSC messages to this address
 
+		// fill the shapes vector with empty shapes
 		for (int i = 0; i < NUM_PLAYERS; i++) {
 			shapes.add(new Shape());
 		}
 		
-		
+		// add textfields and buttons
 		setGUI();
 	}
 
+	public void update(){	
+		// if playing
+		if(bPlay){
+			// Scanner head - CAP‚AL
+			scannerX++;
+
+			// Check if there's a node at scanners position
+			for (int i = 0; i < shapes.size(); i++) {
+				shapes.elementAt(i);
+			}
+		}
+		
+	}
+	
 	public void draw() {
+		update();
+		
 		background(255);
 
-		// guides
+		// draw guides
 		stroke(255-32);
 		line(0, height/2, CANVAS_WIDTH, CANVAS_HEIGHT/2);
 		line(CANVAS_WIDTH/2, 0, CANVAS_WIDTH/2, CANVAS_HEIGHT);
 		line(CANVAS_WIDTH, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 		
-//		if(bTest){
-//			background(128);
-//			bTest = false;
-//		}
-		
+		// draw shapes
 		drawShapes();
-		
-		// Scanner head - CAP‚AL		
-		if(bPlay){
-			scannerX++;
-		}
 
+		// Scanner head - CAP‚AL
 		stroke(color(255,0,0));
 		line(scannerX, 0, scannerX, height);
 	}
 	
 	public void drawShapes(){
+		// loop through shapes
 		for (int i = 0; i < shapes.size(); i++) {
+			// change color to player
 			fill(playerColors[i]);
+			noStroke();
+			// begin drawing a shape
 			beginShape();
+			// temp shape
 			Shape shape = shapes.elementAt(i);
+			// loop through temp shape's top nodes from left to right, and draw a vertex in each
 			for (int j = 0; j < shape.nodes.size(); j++) {
 				Node node = shape.nodes.elementAt(j);
 				float x = node.x * CANVAS_WIDTH;
 				float y = node.y * CANVAS_HEIGHT - (node.thick/2) * CANVAS_HEIGHT;
 				vertex(x, y);
 			}
+			// loop through temp shape's bottom nodes from right to left, and draw a vertex in each
 			for (int j = shape.nodes.size()-1; j >= 0; j--) {
 				Node node = shape.nodes.elementAt(j);
 				float x = node.x * CANVAS_WIDTH;
 				float y = node.y * CANVAS_HEIGHT + (node.thick/2) * CANVAS_HEIGHT;
 				vertex(x, y);
 			}
+			// close the shape
 			endShape();
 		}
 	}
@@ -156,16 +184,24 @@ public class SolitudeServer extends PApplet {
 	 */
 	
 	public void oscEvent(OscMessage theOscMessage){
-		print("------------------------------\nSOLITUDE SERVER\n\n### received an osc message.");
+		// some feedback to console
+		println("---------------------------------");
+		println("SOLITUDE SERVER\n");
+		println("### received an osc message.");
 		print(" addrpattern: "+theOscMessage.addrPattern());
 		println(" typetag: "+theOscMessage.typetag());
+		println("Storing message data...");
 
-//		println("typetag length: "+theOscMessage.typetag().length());
+		// to know the length of the nodes array
 		int num_args = theOscMessage.typetag().length();
+		// what player are talking about?
 		int playerID = theOscMessage.get(0).intValue();
-//		println("player ID: "+playerID);
+
+		// a temp shape
 		Shape shape = new Shape();
+		// make sure it's empty
 		shape.nodes.clear();
+		// store data from the incoming OSC message to a shape
 		for (int i = 1; i < num_args; i += 3) {
 			Node node = new Node();
 			node.x = theOscMessage.get(i).floatValue();
@@ -173,23 +209,26 @@ public class SolitudeServer extends PApplet {
 			node.thick = theOscMessage.get(i+2).floatValue();
 			shape.nodes.add(node);
 		}
+		// and put it into the vector
 		shapes.setElementAt(shape, playerID-1);
-		  
+		
+		// some more feedback to console
+		println("Done!");
 		println("---------------------------------");
-//		  bTest = true;
 	}
 	
+	
+	/**
+	 * Called when a GUI element is triggered
+	 * @param theEvent
+	 */
 	public void controlEvent(ControlEvent theEvent){
 		String name = theEvent.controller().name();
 		println(name);
 		
 		boolean in = false;
 		boolean out = false;
-		
-//		if(name == "ip in"){ 
-//			HOST_IN = tfIpIn.getText();
-//			in = true;
-//		}
+
 		if(name == "port in") {
 			LISTEN_PORT = Integer.parseInt(tfPortIn.getText());
 			in = true;
@@ -214,15 +253,6 @@ public class SolitudeServer extends PApplet {
 		int buttonW = CONTROLP5_WIDTH-5;
 		int buttonH = 20;
 		int offset = 2;
-
-		// In IP and PORT
-//		tfIpIn = controlP5.addTextfield("ip in", width - buttonW, 10, buttonW-10, buttonH);
-//		tfIpIn.setText(HOST_IN);
-//		tfIpIn.setAutoClear(false);
-//		tfIpIn.setColorLabel(color(0));
-//		tfIpIn.setColorBackground(color(228));
-//		tfIpIn.setColorValueLabel(color(128));
-//		tfIpIn.captionLabel().style().marginTop = -32;
 		
 		tfPortIn = gui.addTextfield("port in", width - buttonW, buttonH+offset+20, buttonW-10, buttonH);
 		tfPortIn.setText(Integer.toString(LISTEN_PORT));
