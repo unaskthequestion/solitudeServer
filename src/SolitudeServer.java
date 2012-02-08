@@ -42,9 +42,13 @@ public class SolitudeServer extends PApplet {
 	
 	boolean bTest = false;
 	
+	static int scannerX = 0;
+	boolean bPlay = false;
+	
 
 	public void setup() {
 		size(CANVAS_WIDTH+CONTROLP5_WIDTH,CANVAS_HEIGHT);
+		smooth();
 		
 		osc = new OscP5(this,PORT_IN);
 		remoteLocationIn = new NetAddress(HOST_IN,PORT_IN);
@@ -67,6 +71,12 @@ public class SolitudeServer extends PApplet {
 			bTest = false;
 		}
 				
+		if(bPlay){
+			scannerX++;
+		}
+
+		stroke(color(255,0,0));
+		line(scannerX, 0, scannerX, height);
 	}
 	
 	/***
@@ -125,6 +135,8 @@ public class SolitudeServer extends PApplet {
 
 		if(in) remoteLocationIn = new NetAddress(HOST_IN, PORT_IN);
 		if(out)remoteLocationOut = new NetAddress(HOST_OUT, PORT_OUT);
+		
+		if(name == "play") bPlay = !bPlay;
 
 	}
 
@@ -169,8 +181,12 @@ public class SolitudeServer extends PApplet {
 		tfPortOut.captionLabel().style().marginTop = -32;
 		
 		// Play button
-		controlP5.addButton("play",0, width - buttonW, (buttonH+offset)*7+10, buttonW, buttonH);
-		
+		Toggle t = controlP5.addToggle("play", width - buttonW, (buttonH+offset)*7+10, buttonW, buttonH);
+		t.setColorActive(color(0,128,0));
+		t.setColorBackground(color(128,0,0));
+		t.captionLabel().set("PLAY / STOP");
+		t.captionLabel().style().marginTop = -17;
+		t.captionLabel().style().marginLeft = 10;
 	}
 	
 	static public void main(String args[]) {
