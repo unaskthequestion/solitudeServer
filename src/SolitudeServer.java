@@ -233,7 +233,7 @@ public class SolitudeServer extends PApplet {
 	}
 	
 	public void mouseDragged(){
-		scannerX = mouseX;
+		if(mouseX < CANVAS_WIDTH)	scannerX = mouseX;
 	}
 	
 	public void oscEvent(OscMessage theOscMessage){
