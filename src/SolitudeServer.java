@@ -43,9 +43,11 @@ public class SolitudeServer extends PApplet {
 	ControlP5 gui;
 	Textfield tfIpIn, tfPortIn;
 	Textfield tfIpOut, tfPortOut;
+	Toggle tglPlay, tglLoop;
+	Button btnReset;
 	
 	OscP5 osc;
-	NetAddress remoteLocationIn, remoteLocationOut;
+	NetAddress remoteLocation;
 	
 	Vector<Shape> shapes = new Vector<Shape>(NUM_PLAYERS); // a collection of shapes... should be players
 	// color info for painting shapes
@@ -54,21 +56,20 @@ public class SolitudeServer extends PApplet {
 	int b = 228;
 	int a = 128;
 	// one color per player
-	int p1color = color(r,0,0);
-	int p2color = color(r,g,0);
-	int p3color = color(r,0,b);
-	int p4color = color(0,g,0);
-	int p5color = color(r,g,b);
-	int p6color = color(0,0,b);
-	int p7color = color(r,a,0);
-	int p8color = color(0,a,b);
+	int p1color = color(r,0,0,a);
+	int p2color = color(r,g,0,a);
+	int p3color = color(r,0,b,a);
+	int p4color = color(0,g,0,a);
+	int p5color = color(r,g,b,a);
+	int p6color = color(0,0,b,a);
+	int p7color = color(r,a,0,a);
+	int p8color = color(0,a,b,a);
 	// player color array for easy accessibility
 	int playerColors[] = {p1color, p2color, p3color, p4color, p5color, p6color, p7color, p8color};
 	
-//	boolean bTest = false;
-	
 	static int scannerX = 0;	// the scanner head
 	boolean bPlay = false;		// check if is playing to move the scanner head and send OSC messages if needed
+	boolean bLoop = false;		// loop playback?
 	
 
 	public void setup() {
@@ -76,7 +77,7 @@ public class SolitudeServer extends PApplet {
 		smooth();
 		
 		osc = new OscP5(this,LISTEN_PORT); // listen for OSC messages to this port
-		remoteLocationOut = new NetAddress(HOST,PORT); // send OSC messages to this address
+		remoteLocation = new NetAddress(HOST,PORT); // send OSC messages to this address
 
 		// fill the shapes vector with empty shapes
 		for (int i = 0; i < NUM_PLAYERS; i++) {
@@ -92,10 +93,45 @@ public class SolitudeServer extends PApplet {
 		if(bPlay){
 			// Scanner head - CAP‚AL
 			scannerX++;
-
 			// Check if there's a node at scanners position
 			for (int i = 0; i < shapes.size(); i++) {
-				shapes.elementAt(i);
+				// current shape
+				Shape shape = shapes.elementAt(i);
+				// player id
+				int id = i;
+				for (int j = 0; j < shape.nodes.size(); j++) {
+					
+					// if there's a node at scanners position
+					Node n1 = shape.nodes.elementAt(j);
+					if(n1.x == norm(scannerX, 0, CANVAS_WIDTH)){
+						OscMessage msg = new OscMessage("/test");
+						// add player id to OSC message
+						msg.add(id);
+						// add matching node info to OSC message
+						msg.add(n1.x);
+						msg.add(n1.y);
+						msg.add(n1.thick);
+						// if it's not the last node
+						if(j+1 < shape.nodes.size()){
+							// add next node info to OSC message
+							Node n2 = shape.nodes.elementAt(j+1);
+							msg.add(n2.x);
+							msg.add(n2.y);
+							msg.add(n2.thick);
+						}	
+						// send the OSC message
+						osc.send(msg, remoteLocation);
+						
+						println("Player "+id+" sending OSC message");
+						msg.print();
+						
+					}
+				}
+			}
+			
+			if(scannerX >= CANVAS_WIDTH){
+				if(bLoop)	scannerX = 0;
+				else		tglPlay.mousePressed();
 			}
 		}
 		
@@ -105,6 +141,7 @@ public class SolitudeServer extends PApplet {
 		update();
 		
 		background(255);
+		strokeWeight(1);
 
 		// draw guides
 		stroke(255-32);
@@ -116,7 +153,8 @@ public class SolitudeServer extends PApplet {
 		drawShapes();
 
 		// Scanner head - CAP‚AL
-		stroke(color(255,0,0));
+		stroke(color(255,0,0,228));
+		strokeWeight(2);
 		line(scannerX, 0, scannerX, height);
 	}
 	
@@ -149,6 +187,9 @@ public class SolitudeServer extends PApplet {
 		}
 	}
 
+	public void sendOsc(){
+		
+	}
 	
 	/***
 	 * FOR OSC TESTING.  REMOVE WHEN DONE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -166,22 +207,34 @@ public class SolitudeServer extends PApplet {
 		}
 	}
 	public void sendTestOsc(){
-		OscMessage myMessage = new OscMessage("/test");
-		myMessage.add(1); // player
-		myMessage.add(random(0,1)); // x1
-		myMessage.add(random((float)0,(float)0.5)); // y1
-		myMessage.add(random((float)0,(float)0.5)); // thickness 1
-		myMessage.add(random(0,1)); // x1
-		myMessage.add(random((float)0,(float)0.5)); // y1
-		myMessage.add(random((float)0,(float)0.5)); // thickness 1
-		
-		osc.send(myMessage, remoteLocationOut);
-		
-		println("sendig osc through port: "+PORT);
+//		OscMessage myMessage = new OscMessage("/test");
+//		myMessage.add(1); // player
+//		myMessage.add(random(0,1)); // x1
+//		myMessage.add(random((float)0,(float)0.5)); // y1
+//		myMessage.add(random((float)0,(float)0.5)); // thickness 1
+//		myMessage.add(random(0,1)); // x1
+//		myMessage.add(random((float)0,(float)0.5)); // y1
+//		myMessage.add(random((float)0,(float)0.5)); // thickness 1
+//		
+//		osc.send(myMessage, remoteLocationOut);
+//		
+//		println("sendig osc through port: "+PORT);
 	}
 	/***
 	 * END TESTING
 	 */
+	
+	public void mousePressed(){
+		// set scanner head to mouse position
+		if(mouseX < CANVAS_WIDTH){
+			scannerX = mouseX;
+			if(bPlay)	tglPlay.mousePressed();
+		}
+	}
+	
+	public void mouseDragged(){
+		scannerX = mouseX;
+	}
 	
 	public void oscEvent(OscMessage theOscMessage){
 		// some feedback to console
@@ -243,9 +296,16 @@ public class SolitudeServer extends PApplet {
 		}
 
 		if(in) osc = new OscP5(this, LISTEN_PORT);
-		if(out)remoteLocationOut = new NetAddress(HOST, PORT);
+		if(out)remoteLocation = new NetAddress(HOST, PORT);
 		
 		if(name == "play") bPlay = !bPlay;
+		
+		if(name == "loop") bLoop = !bLoop;
+		
+		if(name == "reset"){
+			scannerX = 0;
+			bPlay = false;
+		}
 	}
 
 	public void setGUI(){
@@ -281,12 +341,23 @@ public class SolitudeServer extends PApplet {
 		tfPortOut.captionLabel().style().marginTop = -32;
 		
 		// Play button
-		Toggle t = gui.addToggle("play", width - buttonW, (buttonH+offset)*7+10, buttonW, buttonH);
-		t.setColorActive(color(0,128,0));
-		t.setColorBackground(color(128,0,0));
-		t.captionLabel().set("PLAY / STOP");
-		t.captionLabel().style().marginTop = -17;
-		t.captionLabel().style().marginLeft = 10;
+		tglPlay = gui.addToggle("play", width - buttonW, (buttonH+offset)*7+10, buttonW, buttonH);
+		tglPlay.setColorActive(color(0,128,0));
+		tglPlay.setColorBackground(color(128,0,0));
+		tglPlay.captionLabel().set("PLAY / STOP");
+		tglPlay.captionLabel().style().marginTop = -17;
+		tglPlay.captionLabel().style().marginLeft = 10;
+
+		// Loop button
+		tglLoop = gui.addToggle("loop", width - buttonW, (buttonH+offset)*8+10, buttonW, buttonH);
+		tglLoop.setColorActive(color(0,128,0));
+		tglLoop.setColorBackground(color(128,0,0));
+		tglLoop.captionLabel().style().marginTop = -17;
+		tglLoop.captionLabel().style().marginLeft = 10;
+		
+		// Reset button
+		btnReset = gui.addButton("reset",0, width - buttonW, (buttonH+offset)*9+10, buttonW, buttonH);
+		btnReset.captionLabel().style().marginLeft = 5;
 	}
 	
 	static public void main(String args[]) {
