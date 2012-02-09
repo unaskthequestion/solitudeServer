@@ -60,7 +60,7 @@ public class SolitudeServer extends PApplet {
 	int p2color = color(r,g,0,a);
 	int p3color = color(r,0,b,a);
 	int p4color = color(0,g,0,a);
-	int p5color = color(r,g,b,a);
+	int p5color = color(0,g,b,a);
 	int p6color = color(0,0,b,a);
 	int p7color = color(r,a,0,a);
 	int p8color = color(0,a,b,a);
