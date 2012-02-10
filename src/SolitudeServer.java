@@ -37,7 +37,7 @@ public class SolitudeServer extends PApplet {
 	static int LISTEN_PORT = 12000; // listen for OSC messages to this port
 	// send OSC messages to this address
 	static String HOST = "127.0.0.1";
-	static int PORT = 1234;
+	static int PORT = 57120;
 	
 	
 	ControlP5 gui;
@@ -93,7 +93,8 @@ public class SolitudeServer extends PApplet {
 		if(bPlay){
 			// Scanner head - CAP‚AL
 			scannerX++;
-			// Check if there's a node at scanners position
+			// Check if there's a node at scanners position and
+			// send an OSC message if it does
 			for (int i = 0; i < shapes.size(); i++) {
 				// current shape
 				Shape shape = shapes.elementAt(i);
@@ -104,6 +105,7 @@ public class SolitudeServer extends PApplet {
 					// if there's a node at scanners position
 					Node n1 = shape.nodes.elementAt(j);
 					if(n1.x == norm(scannerX, 0, CANVAS_WIDTH)){
+						// send OSC
 						OscMessage msg = new OscMessage("/test");
 						// add player id to OSC message
 						msg.add(id);
@@ -190,39 +192,6 @@ public class SolitudeServer extends PApplet {
 	public void sendOsc(){
 		
 	}
-	
-	/***
-	 * FOR OSC TESTING.  REMOVE WHEN DONE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	 */
-	public void keyPressed(){
-		switch (key) {
-		case ' ':
-			println(shapes.size());
-			println(shapes.elementAt(0).nodes.size());
-			break;
-		case 's':
-			sendTestOsc();
-		default:
-			break;
-		}
-	}
-	public void sendTestOsc(){
-//		OscMessage myMessage = new OscMessage("/test");
-//		myMessage.add(1); // player
-//		myMessage.add(random(0,1)); // x1
-//		myMessage.add(random((float)0,(float)0.5)); // y1
-//		myMessage.add(random((float)0,(float)0.5)); // thickness 1
-//		myMessage.add(random(0,1)); // x1
-//		myMessage.add(random((float)0,(float)0.5)); // y1
-//		myMessage.add(random((float)0,(float)0.5)); // thickness 1
-//		
-//		osc.send(myMessage, remoteLocationOut);
-//		
-//		println("sendig osc through port: "+PORT);
-	}
-	/***
-	 * END TESTING
-	 */
 	
 	public void mousePressed(){
 		// set scanner head to mouse position
